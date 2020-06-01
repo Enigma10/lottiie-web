@@ -1,0 +1,116 @@
+<html>
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+  <body>
+    <label>Upload PNG File:</label>
+    <input type="file" id="imageLoader" name="imageLoader"/>
+    <p id="error" style="color:red"></p>
+    <p id="logs"></p>
+    <lottie-player background="transparent" loop controls autoplay id="player" style="display:none"></lottie-player>
+    <br/>
+    <div id="output"></canvas>
+    <p id="warning" style="color:orange"></p>
+    <br/>
+  </body>
+  <script>
+    var imageLoader = document.getElementById('imageLoader');
+    imageLoader.addEventListener('change', handleImage, false);
+    var canvas = document.createElement("canvas")
+    var error = document.getElementById('error');
+    var logs = document.getElementById('logs');
+    var output = document.getElementById('output')
+    var warn = document.getElementById('warning')
+    var player = document.getElementById('player')
+    var ctx = canvas.getContext('2d');
+    function getLottiFileJSON(base64Image) {
+      return `{"v":"5.5.7","meta":{"g":"LottieFiles AE 0.1.20","a":"","k":"","d":"","tc":""},"fr":29.9700012207031,"ip":0,"op":899.000036617021,"w":250,"h":250,"nm":"8 bit","ddd":0,"assets":[{"id":"image_0","w":250,"h":250,"u":"","p":"${base64Image}","e":1}],"layers":[{"ddd":0,"ind":1,"ty":2,"nm":"8 bit.png","cl":"png","refId":"image_0","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[125,125,0],"ix":2},"a":{"a":0,"k":[125,125,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"ip":0,"op":899.000036617021,"st":0,"bm":0}],"markers":[]}`
+    }
+    function reset() {
+      error.innerHTML = ''
+      logs.innerHTML = ''
+      output.innerHTML = ''
+      warn.innerHTML = ''
+    }
+    function updateError(errorText) {
+      error.innerHTML += errorText + '<br/>'
+    }
+    function updateLog(logText) {
+      logs.innerHTML += logText + '<br/>'
+    }
+    function download(filename, text) {
+      text.innerHTML = text;
+      var br = document.createElement('br');
+      document.body.appendChild(br);
+      var element = document.createElement('a');
+      element.setAttribute('href', 'data:aplication/json,' + encodeURIComponent(text));
+      element.setAttribute('download', filename);
+      element.innerText = `Click to download ${filename}`
+      output.appendChild(element);
+    }
+    function updateWarning(warningText) {
+      warn.innerHTML += warningText + '<br/>'
+    }
+    function handleImage(e){
+        reset()
+        var fileName = this.value.replace(/.*[\/\\]/, '');
+        fileName = fileName.split('.')[0]
+        if (this.files[0].type !== 'image/png') {
+          updateError(`only PNG image supported.`)
+          return
+        }
+        if (this.files[0].size > 30000) {
+          updateError(`Current file is size is ${Math.round(this.files[0].size / 1000)}KB, Max size allowed is 30KB. use <a href="https://tinypng.com/">Tiny PNG</a> recursively to get size target size.`)
+          return
+        }
+        updateLog(`1. Uploaded PNG size is ${Math.round(this.files[0].size / 1000)}KB.`)
+        var reader = new FileReader();
+        reader.onload = function(event){
+            var img = new Image();
+            img.onload = function(){
+                var settings = {
+                  max_width: 250,
+                  max_height: 250
+                }
+                canvas.width = 250
+                var canvasCopy = document.createElement("canvas")
+                var copyContext = canvasCopy.getContext("2d")
+                var canvasCopy1 = document.createElement("canvas")
+                var copyContext1 = canvasCopy1.getContext("2d")
+                var ratio = 1
+                if(img.width > settings.max_width)
+                    ratio = settings.max_width / img.width
+                else if(img.height > settings.max_height)
+                    ratio = settings.max_height / img.height
+                canvasCopy.width = img.width
+                canvasCopy.height = img.height
+                copyContext.clearRect(0, 0, canvasCopy.width, canvasCopy.height);
+                copyContext.drawImage(img, 0, 0);
+                dataURL = canvasCopy.toDataURL('image/png');
+                var posx = (img.width - img.width * ratio) / 2
+                var posy = (img.height - img.height * ratio) / 2
+                canvasCopy1.width = img.width * ratio
+                canvasCopy1.height = img.height * ratio
+                copyContext1.clearRect(0, 0, canvasCopy1.width, canvasCopy1.height);
+                copyContext1.drawImage(canvasCopy, 0, 0, img.width, img.height, 0, 0, img.width * ratio, img.height * ratio);
+                dataURL = canvasCopy1.toDataURL('image/png');
+                canvas.width = img.width * ratio
+                canvas.height = img.height * ratio
+                ctx.clearRect(0, 0, img.width * ratio, img.height * ratio);
+                ctx.drawImage(canvasCopy1, 0, 0, img.width * ratio, img.height * ratio)
+                updateLog(`2. resizing image: setting width ${canvas.width}px and heigth ${canvas.height}px.`)
+                dataURL = ctx.canvas.toDataURL('image/png');
+                var lottieFile = getLottiFileJSON(dataURL);
+                download(`${fileName}.json`, lottieFile);
+                updateLog(`3. Created Lottie file with size ${Math.round(lottieFile.length / 1000)}KB.`)
+                updateLog(`4. Lottie File is of ${canvas.width}x${canvas.height}.`)
+                updateLog(`5. Ready to download Lottie file click on download link. Please verify file by in app<a>`)
+                player.style.height = canvas.height
+                player.style.width = canvas.width
+                player.style.display = "block"
+                player.load(lottieFile)
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(e.target.files[0]);     
+    }
+  </script>
+</html>
